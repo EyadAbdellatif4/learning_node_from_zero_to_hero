@@ -53,6 +53,17 @@ app.patch("/products/:id", (req, res) => {
   res.status(200).json({ message: "success", data: updatedProduct });
 });
 
+app.delete("/products/:id", (req, res) => {
+  const id = req.params.id;
+  const product = prodList.products.find((prod) => prod.id == id);
+  if (!product) {
+    return res.status(404).json({ message: "Product not found" });
+  }
+  prodList.products = prodList.products.filter((prod) => prod.id != id);
+  fs.writeFileSync(`${__dirname}/data/products.json`, JSON.stringify(prodList));
+  res.status(200).json({ message: "success", data: product });
+});
+
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
