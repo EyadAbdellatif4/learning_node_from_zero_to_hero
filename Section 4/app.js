@@ -12,12 +12,12 @@ app.get("/", (req, res) => {
   res.send("Hello World");
 });
 
-app.get("/products", (req, res) => {
+const getProducts = (req, res) => {
   console.log(prodList.products[0].id);
   res.status(200).json({ message: "success", data: prodList.products });
-});
+};
 
-app.get("/products/:id", (req, res) => {
+const getProduct = (req, res) => {
   const id = req.params.id;
   const product = prodList.products.find((prod) => prod.id == id);
   console.log(product);
@@ -25,18 +25,18 @@ app.get("/products/:id", (req, res) => {
     return res.status(404).json({ message: "Product not found" });
   }
   res.status(200).json({ message: "success", data: product });
-});
+};
 
-app.post("/products", (req, res) => {
+const addProduct = (req, res) => {
   const newProduct = req.body;
   const id = prodList.products[prodList.products.length - 1].id + 1;
   const product = { id, ...newProduct };
   prodList.products.push(product);
   fs.writeFileSync(`${__dirname}/data/products.json`, JSON.stringify(prodList));
   res.status(201).json({ message: "success", data: newProduct });
-});
+};
 
-app.patch("/products/:id", (req, res) => {
+const updateProduct = (req, res) => {
   const id = req.params.id;
   const updatedProduct = req.body;
   const product = prodList.products.find((prod) => prod.id == id);
@@ -51,9 +51,9 @@ app.patch("/products/:id", (req, res) => {
   });
   fs.writeFileSync(`${__dirname}/data/products.json`, JSON.stringify(prodList));
   res.status(200).json({ message: "success", data: updatedProduct });
-});
+};
 
-app.delete("/products/:id", (req, res) => {
+const deleteProduct = (req, res) => {
   const id = req.params.id;
   const product = prodList.products.find((prod) => prod.id == id);
   if (!product) {
@@ -62,7 +62,22 @@ app.delete("/products/:id", (req, res) => {
   prodList.products = prodList.products.filter((prod) => prod.id != id);
   fs.writeFileSync(`${__dirname}/data/products.json`, JSON.stringify(prodList));
   res.status(200).json({ message: "success", data: product });
-});
+};
+
+// routes for products
+
+const productsRouter = express.Router();
+productsRouter.get("/", getProducts);
+
+productsRouter.get("/:id", getProduct);
+
+productsRouter.post("/", addProduct);
+
+productsRouter.patch("/:id", updateProduct);
+
+productsRouter.delete("/:id", deleteProduct);
+
+app.use("/api/products", productsRouter);
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
