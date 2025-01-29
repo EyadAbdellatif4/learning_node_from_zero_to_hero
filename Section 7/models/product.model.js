@@ -55,24 +55,27 @@ const productschema = new mongoose.Schema(
     images: {
       type: [String], // Data type is an array of Strings
     },
+  },
+  {
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
   }
-  // {
-  //   toJSON: { virtuals: true },
-  //   toObject: { virtuals: true },
-  // }
 );
 
-// virtual propertys
-// productschema.virtual("priceAfterDiscount").get(function () {
-//   return this.price - (this.price * this.discountPercentage) / 100;
-// });
+// Step 13: Define virtual properties for the schema
+// Virtual property to calculate the price after discount
+productschema.virtual("priceAfterDiscount").get(function () {
+  return this.price - (this.price * this.discountPercentage) / 100;
+});
 
-// productschema.virtual("sulg").get(function () {
-//   return slugify(this.title, { lower: true });
-// });
-// Step 13: Create the Product model from the schema
+// Virtual property to generate a slug from the product title
+productschema.virtual("sulg").get(function () {
+  return slugify(this.title, { lower: true });
+});
+
+// Step 14: Create the Product model from the schema
 // The model represents a collection in the MongoDB database
 const Product = new mongoose.model("Product", productschema);
 
-// Step 14: Export the Product model for use in other parts of the application
+// Step 15: Export the Product model for use in other parts of the application
 module.exports = Product;
