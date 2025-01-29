@@ -1,135 +1,132 @@
 const Product = require("../models/product.model");
 const ApiFilters = require("../utils/APIFilter");
+
+// Controller function to get a list of products with filtering, sorting, field limiting, and pagination
 const getProducts = async (req, res) => {
   try {
-    // Step 1: Create an instance of ApiFilters and apply filtering
-    // const filter = new ApiFilters(Product.find(), req.query).filter();
+    // Step 1: Create an instance of ApiFilters and apply filtering, sorting, field limiting, and pagination
     const filter = new ApiFilters(Product.find(), req.query)
-      .filter()
-      .sort()
-      .fields()
-      .paginate();
+      .filter() // Apply filtering based on query parameters
+      .sort() // Apply sorting based on query parameters
+      .fields() // Limit fields based on query parameters
+      .paginate(); // Apply pagination based on query parameters
 
-    // // Step 2: Apply sorting if the `sort` parameter is provided
-    // if (req.query.sort) {
-    //   filter.sort();
-    // }
-
-    // // Step 3: Apply field limiting if the `fields` parameter is provided
-    // if (req.query.fields) {
-    //   filter.fields(); // Call the correct method: `fields()` instead of `limit()`
-    // }
-
-    // // Step 4: Apply pagination if the `page` parameter is provided
-    // if (req.query.page) {
-    //   filter.paginate(); // Call the correct method: `paginate()`
-    // }
-
-    // Step 5: Execute the query and retrieve the product list
+    // Step 2: Execute the query and retrieve the product list
     const productList = await filter.query.exec();
 
-    // Step 6: Send the response with the product list
+    // Step 3: Send the response with the product list
     res.status(200).json({
       message: "success",
       length: productList.length,
       data: productList,
     });
   } catch (err) {
-    // Step 7: Handle any errors that occur during the process
+    // Step 4: Handle any errors that occur during the process
     res.status(500).json({ message: "error", data: err.message });
   }
 };
 
+// Middleware to modify the query for getting top-rated products
 const getTopRatedProducts = async (req, res, next) => {
+  // Step 1: Set the sort parameter to sort by rating (descending) and price
   req.query.sort = "-rating,price";
+  // Step 2: Limit the number of results to 6
   req.query.limit = 6;
+  // Step 3: Pass control to the next middleware or controller
   next();
 };
 
+// Middleware to modify the query for getting best-selling products
 const bestSaller = async (req, res, next) => {
+  // Step 1: Set the sort parameter to sort by stock (ascending)
   req.query.sort = "stock";
+  // Step 2: Limit the number of results to 10
   req.query.limit = 10;
+  // Step 3: Pass control to the next middleware or controller
   next();
 };
 
+// Controller function to compute product statistics based on rating
 const computeProductStats = async (req, res) => {
   try {
+    // Step 1: Use MongoDB aggregation to compute statistics for products with a rating >= 4.5
     const stats = await Product.aggregate([
       {
-        $match: { rating: { $gte: 4.5 } },
+        $match: { rating: { $gte: 4.5 } }, // Match products with rating >= 4.5
       },
       {
         $group: {
-          _id: "$category",
-          numProducts: { $sum: 1 },
-          avgPrice: { $avg: "$price" },
-          avgRating: { $avg: "$rating" },
-          minPrice: { $min: "$price" },
-          maxPrice: { $max: "$price" },
-          numberOfProducts: { $sum: 1 },
+          _id: "$category", // Group by category
+          numProducts: { $sum: 1 }, // Count the number of products in each category
+          avgPrice: { $avg: "$price" }, // Calculate the average price
+          avgRating: { $avg: "$rating" }, // Calculate the average rating
+          minPrice: { $min: "$price" }, // Find the minimum price
+          maxPrice: { $max: "$price" }, // Find the maximum price
+          numberOfProducts: { $sum: 1 }, // Count the number of products
         },
       },
       {
-        $sort: { avgPrice: -1 },
+        $sort: { avgPrice: -1 }, // Sort by average price in descending order
       },
     ]);
 
+    // Step 2: Send the computed statistics in the response
     res
       .status(200)
       .json({ message: "success", length: stats.length, data: stats });
   } catch (err) {
+    // Step 3: Handle any errors
     res.status(500).json({ message: "error", data: err.message });
   }
 };
 
+// Controller function to find the most sold products in a given year
 const MostSoldYear = async (req, res) => {
   try {
+    // Step 1: Use MongoDB aggregation to find the most sold products
     const stats = await Product.aggregate([
       {
-        $unwind: "$images",
+        $unwind: "$images", // Unwind the images array (if needed)
       },
       {
-        $match: { rating: { $gte: 4.5 } },
+        $match: { rating: { $gte: 4.5 } }, // Match products with rating >= 4.5
       },
-      // {
-      //   $match: { orderDates: { $gte: new Date(`req.params.year-1-1`), $lte: new Date(`req.params.year-12-31`) } },
-      // },
       {
         $group: {
-          _id: "$month",
-          numProducts: { $sum: 1 },
-          $product: { $push: { title: "$title", price: "$price" } },
+          _id: "$month", // Group by month
+          numProducts: { $sum: 1 }, // Count the number of products sold
+          $product: { $push: { title: "$title", price: "$price" } }, // Push product details into an array
         },
       },
       {
-        $sort: { numProducts: -1 },
+        $sort: { numProducts: -1 }, // Sort by the number of products sold in descending order
       },
       {
-        $limit: 1,
+        $limit: 1, // Limit the result to the top-selling month
       },
       {
         $addFields: {
-          month: "$_id",
+          month: "$_id", // Add the month field to the result
         },
       },
       {
         $project: {
-          _id: 0,
+          _id: 0, // Exclude the _id field from the result
         },
       },
     ]);
 
+    // Step 2: Send the result in the response
     res
       .status(200)
       .json({ message: "success", length: stats.length, data: stats });
   } catch (err) {
+    // Step 3: Handle any errors
     res.status(500).json({ message: "error", data: err.message });
   }
 };
 
-// Other controller functions (getProduct, addProduct, updateProduct, deleteProduct, validateProduct)
-// are documented similarly with step-by-step comments.
-
+// Controller function to get a single product by ID
 const getProduct = async (req, res) => {
   try {
     // Step 1: Find a product by its ID
@@ -143,6 +140,7 @@ const getProduct = async (req, res) => {
   }
 };
 
+// Controller function to add a new product
 const addProduct = async (req, res) => {
   try {
     // Step 1: Create a new product using the request body
@@ -156,6 +154,7 @@ const addProduct = async (req, res) => {
   }
 };
 
+// Controller function to update a product by ID
 const updateProduct = async (req, res) => {
   try {
     // Step 1: Find and update the product by its ID
@@ -171,6 +170,7 @@ const updateProduct = async (req, res) => {
   }
 };
 
+// Controller function to delete a product by ID
 const deleteProduct = async (req, res) => {
   try {
     // Step 1: Find and delete the product by its ID
@@ -184,6 +184,7 @@ const deleteProduct = async (req, res) => {
   }
 };
 
+// Middleware to validate the request body before adding or updating a product
 const validateProduct = (req, res, next) => {
   // Step 1: Log the request body for debugging
   console.log(req.body);
