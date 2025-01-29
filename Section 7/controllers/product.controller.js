@@ -3,22 +3,27 @@ const ApiFilters = require("../utils/APIFilter");
 const getProducts = async (req, res) => {
   try {
     // Step 1: Create an instance of ApiFilters and apply filtering
-    const filter = new ApiFilters(Product.find(), req.query).filter();
+    // const filter = new ApiFilters(Product.find(), req.query).filter();
+    const filter = new ApiFilters(Product.find(), req.query)
+      .filter()
+      .sort()
+      .fields()
+      .paginate();
 
-    // Step 2: Apply sorting if the `sort` parameter is provided
-    if (req.query.sort) {
-      filter.sort();
-    }
+    // // Step 2: Apply sorting if the `sort` parameter is provided
+    // if (req.query.sort) {
+    //   filter.sort();
+    // }
 
-    // Step 3: Apply field limiting if the `fields` parameter is provided
-    if (req.query.fields) {
-      filter.fields(); // Call the correct method: `fields()` instead of `limit()`
-    }
+    // // Step 3: Apply field limiting if the `fields` parameter is provided
+    // if (req.query.fields) {
+    //   filter.fields(); // Call the correct method: `fields()` instead of `limit()`
+    // }
 
-    // Step 4: Apply pagination if the `page` parameter is provided
-    if (req.query.page) {
-      filter.paginate(); // Call the correct method: `paginate()`
-    }
+    // // Step 4: Apply pagination if the `page` parameter is provided
+    // if (req.query.page) {
+    //   filter.paginate(); // Call the correct method: `paginate()`
+    // }
 
     // Step 5: Execute the query and retrieve the product list
     const productList = await filter.query.exec();
@@ -45,6 +50,81 @@ const bestSaller = async (req, res, next) => {
   req.query.sort = "stock";
   req.query.limit = 10;
   next();
+};
+
+const computeProductStats = async (req, res) => {
+  try {
+    const stats = await Product.aggregate([
+      {
+        $match: { rating: { $gte: 4.5 } },
+      },
+      {
+        $group: {
+          _id: "$category",
+          numProducts: { $sum: 1 },
+          avgPrice: { $avg: "$price" },
+          avgRating: { $avg: "$rating" },
+          minPrice: { $min: "$price" },
+          maxPrice: { $max: "$price" },
+          numberOfProducts: { $sum: 1 },
+        },
+      },
+      {
+        $sort: { avgPrice: -1 },
+      },
+    ]);
+
+    res
+      .status(200)
+      .json({ message: "success", length: stats.length, data: stats });
+  } catch (err) {
+    res.status(500).json({ message: "error", data: err.message });
+  }
+};
+
+const MostSoldYear = async (req, res) => {
+  try {
+    const stats = await Product.aggregate([
+      {
+        $unwind: "$images",
+      },
+      {
+        $match: { rating: { $gte: 4.5 } },
+      },
+      // {
+      //   $match: { orderDates: { $gte: new Date(`req.params.year-1-1`), $lte: new Date(`req.params.year-12-31`) } },
+      // },
+      {
+        $group: {
+          _id: "$month",
+          numProducts: { $sum: 1 },
+          $product: { $push: { title: "$title", price: "$price" } },
+        },
+      },
+      {
+        $sort: { numProducts: -1 },
+      },
+      {
+        $limit: 1,
+      },
+      {
+        $addFields: {
+          month: "$_id",
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+        },
+      },
+    ]);
+
+    res
+      .status(200)
+      .json({ message: "success", length: stats.length, data: stats });
+  } catch (err) {
+    res.status(500).json({ message: "error", data: err.message });
+  }
 };
 
 // Other controller functions (getProduct, addProduct, updateProduct, deleteProduct, validateProduct)
@@ -127,4 +207,6 @@ module.exports = {
   validateProduct,
   getTopRatedProducts,
   bestSaller,
+  computeProductStats,
+  MostSoldYear,
 };

@@ -8,7 +8,9 @@ const {
   deleteProduct,
   validateProduct,
   getTopRatedProducts,
-  bestSaller
+  bestSaller,
+  computeProductStats,
+  MostSoldYear
 } = require("../controllers/product.controller"); // Import product controller functions
 
 // Step 2: Create an instance of an Express router
@@ -21,7 +23,11 @@ productsRouter.get("/", getProducts);
 // Route 6: Top rated products
 productsRouter.get("/top", getTopRatedProducts, getProducts);
 
-productsRouter.get("/best-seller", bestSaller, getProducts); 
+productsRouter.get("/best-seller", bestSaller, getProducts);
+
+productsRouter.get("/stats", computeProductStats);
+
+productsRouter.get("/most-sold-year", MostSoldYear);
 
 // Route 2: GET /products/:id - Fetch a single product by ID
 productsRouter.get("/:id", getProduct);
